@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 12/07/2020 10:15:05 PM
+-- Create Date: 02/23/2021 04:04:58 PM
 -- Design Name: 
--- Module Name: shift_reg_8bit - shift_reg_8bit_arch
+-- Module Name: shift_reg_generic - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -33,19 +33,22 @@ use IEEE.STD_LOGIC_ARITH.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity shift_reg_8bit is
-    port(D, CLK : in STD_LOGIC;
-        data : out STD_LOGIC_VECTOR(7 downto 0));
-end shift_reg_8bit;
+entity shift_reg_generic is
+    generic(numOfBits : integer := 8);
+    port(d : in STD_LOGIC;
+        clk : in STD_LOGIC;
+        data : out STD_LOGIC_VECTOR(numOfBits - 1 downto 0));
+end shift_reg_generic;
 
-architecture shift_reg_8bit_arch of shift_reg_8bit is
-    Signal data_sig : STD_LOGIC_VECTOR(7 downto 0) := X"00";
+architecture Behavioral of shift_reg_generic is
+    constant msb : integer := numOfBits - 1;
+    Signal data_sig : STD_LOGIC_VECTOR(msb downto 0) := CONV_STD_LOGIC_VECTOR(0, numOfBits);
 begin
     data <= data_sig;
     
     process(CLK) begin
         if(rising_edge(CLK)) then
-            data_sig <= (data_sig(6 downto 0) & D);
+            data_sig <= (data_sig(msb - 1 downto 0) & D);
         end if;
     end process;
-end shift_reg_8bit_arch;
+end Behavioral;

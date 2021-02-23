@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 12/07/2020 08:45:25 PM
+-- Create Date: 12/14/2020 07:10:27 PM
 -- Design Name: 
--- Module Name: shift_reg_2bit - shift_reg_2bit_arch
+-- Module Name: register_arch - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -31,19 +31,19 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity shift_reg_2bit is
-    port(CLK, D, reset : in STD_LOGIC;
-        data : out STD_LOGIC_VECTOR(1 downto 0));
-end shift_reg_2bit;
+entity register_arch is
+    port(en : in STD_LOGIC;
+        D : in STD_LOGIC_VECTOR(7 downto 0);
+        Q : out STD_LOGIC_VECTOR(7 downto 0));
+end register_arch;
 
-architecture shift_reg_2bit_arch of shift_reg_2bit is
-    component d_flip_flop
-        port(D, CLK, reset : in STD_LOGIC;
-            Q : out STD_LOGIC);
-    end component;
-    Signal Q_flip1 : STD_LOGIC;
+architecture Behavioral of register_arch is
 begin
-    reg1 : d_flip_flop port map(CLK => CLK, D => D, reset => reset, Q => Q_flip1);
-    reg2 : d_flip_flop port map(CLK => CLK, D => Q_flip1, reset => reset, Q => data(1));
-    data(0) <= Q_flip1;
-end shift_reg_2bit_arch;
+
+process(en) begin
+    if(rising_edge(en)) then
+        Q <= D;
+    end if;
+end process;
+
+end Behavioral;

@@ -32,7 +32,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 entity d_flip_flop is
-    port(D, CLK : in STD_LOGIC;
+    port(D, CLK, reset : in STD_LOGIC;
         Q : out STD_LOGIC);
 end d_flip_flop;
 
@@ -55,7 +55,11 @@ architecture d_flipflop_behav of d_flip_flop is
 begin
     process(CLK) begin
         if(rising_edge(clk)) then
-            Q <= D;
+            if(reset = '1') then
+                Q <= '0';
+            else
+                Q <= D;
+            end if;
         end if;
     end process;
 end d_flipflop_behav;

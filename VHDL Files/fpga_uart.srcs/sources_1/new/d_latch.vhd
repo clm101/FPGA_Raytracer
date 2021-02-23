@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 12/07/2020 10:05:05 PM
+-- Create Date: 12/07/2020 05:36:51 PM
 -- Design Name: 
--- Module Name: shift_reg_4bit - shift_reg_4bit_arch
+-- Module Name: d_latch - d_latch_arch
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -31,19 +31,20 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity shift_reg_4bit is
-    port(D, CLK, reset : in STD_LOGIC;
-        data : out STD_LOGIC_VECTOR(3 downto 0));
-end shift_reg_4bit;
+entity d_latch is
+    port(D, CLK : in STD_LOGIC;
+        Q : out STD_LOGIC);
+end d_latch;
 
-architecture shift_reg_4bit_arch of shift_reg_4bit is
-    component shift_reg_2bit
-        port(D, CLK, reset : in STD_LOGIC;
-            data : out STD_LOGIC_VECTOR(1 downto 0));
+architecture d_latch_arch of d_latch is
+    component sr_latch
+        port(S, R : in STD_LOGIC;
+            Q, Q_bar : inout STD_LOGIC);
     end component;
-    Signal data_bridge : STD_LOGIC_VECTOR(1 downto 0);
+    Signal R_latch, S_latch, Q_sig, Q_bar_sig : STD_LOGIC;
 begin
-    reg1 : shift_reg_2bit port map(D => D, CLK => CLK, reset => reset, data => data_bridge);
-    reg2 : shift_reg_2bit port map(D => data_bridge(1), CLK => CLK, reset => reset, data => data(3 downto 2));
-    data(1 downto 0) <= data_bridge;
-end shift_reg_4bit_arch;
+    SRLatch0: sr_latch port map(S => S_latch, R => R_latch, Q => Q_sig, Q_bar => Q_bar_sig);   
+    S_latch <= D and CLK;
+    R_latch <= (not D) and CLK;
+    Q <= Q_sig;
+end d_latch_arch;
