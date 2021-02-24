@@ -57,9 +57,15 @@ architecture shift_reg_8bit_w_store_arch of shift_reg_8bit_w_store is
         port(d : in STD_LOGIC; clk : in STD_LOGIC; data : out STD_LOGIC_VECTOR);
     end component;
     
-    component register_generic
-        generic(bitCount : integer);
-        port(en : in STD_LOGIC; D : in STD_LOGIC_VECTOR; Q : out STD_LOGIC_VECTOR);
+--    component register_generic
+--        generic(bitCount : integer);
+--        port(en : in STD_LOGIC; D : in STD_LOGIC_VECTOR; Q : out STD_LOGIC_VECTOR);
+--    end component;
+    
+    component blk_mem_gen_0
+        port(clka : in STD_LOGIC; ena : in STD_LOGIC; wea : in STD_LOGIC_VECTOR(0 downto 0);
+            addra : in STD_LOGIC_VECTOR(2 downto 0); dina : in STD_LOGIC_VECTOR(7 downto 0);
+            douta : out STD_LOGIC_VECTOR(7 downto 0));
     end component;
     
     component clkdiv
@@ -70,12 +76,15 @@ architecture shift_reg_8bit_w_store_arch of shift_reg_8bit_w_store is
     Signal data_sig : STD_LOGIC_VECTOR(bitCount - 1 downto 0) := CONV_STD_LOGIC_VECTOR(0, bitCount);
     Signal data_store_sig : STD_LOGIC_VECTOR(bitCount - 1 downto 0) := CONV_STD_LOGIC_VECTOR(0, bitCount);
     Signal bit_counter : integer := 0;
-    Signal en_sig : STD_LOGIC := '0';
+    Signal en_sig : STD_LOGIC := '1';
+    Signal we_sig : STD_LOGIC_VECTOR(0 downto 0) := b"0";
+    Signal addr_sig : STD_LOGIC_VECTOR(2 downto 0) := b"000";
     Signal clk_sig : STD_LOGIC;
 begin 
     clkdivcom : clkdiv generic map(5000000) port map(clk_in => CLK, clk_out => clk_sig); 
     shift_reg : shift_reg_generic generic map(bitCount) port map(d => D, clk => clk_sig, data => data_sig);
-    data_reg: register_generic generic map(bitCount) port map(en => en_sig, D => data_sig, Q => data_store);
+    --data_reg: register_generic generic map(bitCount) port map(en => en_sig, D => data_sig, Q => data_store);
+    rammod : blk_mem_gen_0 port map(clka => CLK, ena => en_sig, wea => we_sig, addra => addr_sig, dina => data_sig, douta => data_store);
      
     data <= data_sig; 
      
@@ -85,9 +94,9 @@ begin
             --data_sig <= (data_sig(bitCount - 2 downto 0) & D);
             if(bit_counter = bitCount) then
                 bit_counter <= 0;
-                en_sig <= '1';
+                we_sig <= b"1";
             else
-                en_sig <= '0';
+                we_sig <= b"0";
                 bit_counter <= bit_counter + 1;
             end if;
         end if;
