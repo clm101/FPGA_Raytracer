@@ -7,9 +7,9 @@ The goal of this project is to implement a hardware accelerated ray-triangle int
 ## Phase 1 (Initial FPGA data storage work)
 1. Create a basic shift register to eventually handle data reception(DONE).
 2. Allow state of the shift register to be output at once(DONE).
-3. Figure out how to use the BRAM to store data(IN PROGRESS).
+3. Figure out how to use the BRAM to store data(DONE).
    - The initial implementation was easier than expected, the remainder of this step will be experimenting with reading and writing to BRAM using the available IO on the Basys3 and creating testbenches.
-5. Verify writing and reading from the BRAM.
+4. Verify writing and reading from the BRAM(DONE).
 ## Phase 2 (Initial FPGA UART work)
 1. Get FPGA to output data over a USB connection.
 2. Verify using puTTY.
