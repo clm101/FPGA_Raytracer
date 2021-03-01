@@ -10,19 +10,20 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity register_generic is
-    generic(bitCount : integer);
-    port(en : in STD_LOGIC;
-        D : in STD_LOGIC_VECTOR(bitCount - 1 downto 0);
-        Q : out STD_LOGIC_VECTOR(bitCount - 1 downto 0));
-end register_generic;
+entity tflipflop is
+    port(T, CLK : in STD_LOGIC;
+        Q : out STD_LOGIC);
+end tflipflop;
 
-architecture Behavioral of register_generic is
+architecture tflipflop_arch of tflipflop is
+
 begin
-    process(en) begin
-        if(rising_edge(en)) then
-            Q <= D;
+    process(CLK)
+        variable tmp : STD_LOGIC := '0';
+    begin
+        if(rising_edge(CLK)) then
+            tmp := T xor tmp;
         end if;
+        Q <= tmp;
     end process;
-    
-end Behavioral;
+end tflipflop_arch;

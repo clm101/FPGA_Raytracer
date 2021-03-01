@@ -1,24 +1,3 @@
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 02/23/2021 04:04:58 PM
--- Design Name: 
--- Module Name: shift_reg_generic - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-----------------------------------------------------------------------------------
-
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
@@ -37,7 +16,8 @@ entity shift_reg_generic is
     generic(numOfBits : integer := 8);
     port(d : in STD_LOGIC;
         clk : in STD_LOGIC;
-        data : out STD_LOGIC_VECTOR(numOfBits - 1 downto 0));
+        en : in STD_LOGIC := '1';
+        data : out STD_LOGIC_VECTOR(numOfBits - 1 downto 0) := CONV_STD_LOGIC_VECTOR(0, numOfBits));
 end shift_reg_generic;
 
 architecture Behavioral of shift_reg_generic is
@@ -48,7 +28,9 @@ begin
     
     process(CLK) begin
         if(rising_edge(CLK)) then
-            data_sig <= (data_sig(msb - 1 downto 0) & D);
+            if(en = '1') then
+                data_sig <= (data_sig(msb - 1 downto 0) & D);
+            end if;
         end if;
     end process;
 end Behavioral;
