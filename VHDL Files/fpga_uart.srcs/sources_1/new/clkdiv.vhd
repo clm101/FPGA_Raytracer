@@ -13,7 +13,8 @@ use IEEE.STD_LOGIC_ARITH.ALL;
 --use UNISIM.VComponents.all;
 
 entity clkdiv is
-    generic(maxCount : integer := 100000000);
+--    generic(maxCount : integer := 100000000);
+    generic(clkPeriodIn_ns : integer := 10; clkPeriodOut_ns : integer := 250000000);
     port(clk_in : in STD_LOGIC;
         clk_out : out STD_LOGIC);
 end clkdiv;
@@ -30,9 +31,10 @@ architecture clkdiv_arch of clkdiv is
         return ret;
     end ceil_logb2;
     
-    constant numOfBits : integer := ceil_logb2(maxCount);
+    --constant numOfBits : integer := ceil_logb2(maxCount);
+    constant maxCount : integer := clkPeriodOut_ns / (2 * clkPeriodIn_ns);
 
-    Signal counter : STD_LOGIC_VECTOR(numOfBits - 1 downto 0) := CONV_STD_LOGIC_VECTOR(0, numOfBits);
+    Signal counter : integer := 0;
     Signal clktmp : STD_LOGIC := '0';
 begin
     clk_out <= clktmp;
@@ -40,7 +42,7 @@ begin
     process(clk_in) begin
         if(rising_edge(clk_in)) then
             if(counter = maxCount - 1) then
-                counter <= CONV_STD_LOGIC_VECTOR(0, numOfBits);
+                counter <= 0;
                 clktmp <= not clktmp;
             else
                 counter <= counter + 1;

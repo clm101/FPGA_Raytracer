@@ -51,10 +51,10 @@ architecture shift_reg_8bit_w_store_arch of shift_reg_8bit_w_store is
             douta : out STD_LOGIC_VECTOR(7 downto 0));
     end component;
     
---    component clkdiv
---        generic(maxCount : integer);
---        port(clk_in : in STD_LOGIC; clk_out : out STD_LOGIC);
---    end component;
+    component clkdiv
+        generic(clkPeriodIn_ns : integer; clkPeriodOut_ns : integer);
+        port(clk_in : in STD_LOGIC; clk_out : out STD_LOGIC);
+    end component;
     
     component ButtonToggle
         generic(restCount : integer; DefaultOutput : STD_LOGIC);
@@ -76,8 +76,7 @@ begin
     btnVector(1) <= btnCenter;
     btnVector(2) <= btnLeft;
     
-    --clkdivcom : clkdiv generic map(5000000) port map(clk_in => CLK, clk_out => clk_sig); 
-    clk_sig <= CLK;
+    clkdivcom : clkdiv generic map(10, 250000000) port map(clk_in => CLK, clk_out => clk_sig); 
     shift_reg : shift_reg_generic generic map(bitCount) port map(d => D, clk => clk_sig, en => btn_en_sig, data => data_sig);
     --data_reg: register_generic generic map(bitCount) port map(en => en_sig, D => data_sig, Q => reg_sig);
     rammod : blk_mem_gen_0 port map(clka => CLK, ena => en_sig, wea => we_sig, addra => addr_sig, dina => data_sig, douta => data_store);
