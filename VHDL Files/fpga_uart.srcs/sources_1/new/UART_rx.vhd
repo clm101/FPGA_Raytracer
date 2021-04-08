@@ -48,6 +48,7 @@ begin
     begin
         if(rising_edge(sys_clk)) then
             if(reset = '1') then
+                rx_state <= IDLE;
                 rx_active <= '0';
                 rx_done <= '0';
                 rx_data_out_reg <= (others => '0');
@@ -106,9 +107,13 @@ begin
                             sys_clk_count := 0;
                             rx_done <= '1';
                             rx_state <= IDLE;
-                        else
+                        elsif(sys_clk_count > 1) then -- delay a couple clocks when rx_done goes high
                             sys_clk_count := sys_clk_count + 1;
                             rx_done <= '1';
+                            rx_state <= STOP;
+                        else
+                            rx_done <= '0';
+                            sys_clk_count := sys_clk_count + 1;
                             rx_state <= STOP;
                         end if;
                     when others =>

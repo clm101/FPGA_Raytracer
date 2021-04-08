@@ -37,61 +37,71 @@ begin
         variable bit_index : integer range 0 to 7 := 0;
     begin
         if(rising_edge(sys_clk)) then
-            case tx_state is
-                when IDLE =>
-                    tx_active <= '0';
-                    tx_done <= '0';
-                    tx_data_out <= '1';
-                    
-                    sys_clk_count := 0;
-                    bit_index := 0;
-                    
-                    if(tx_start = '1') then
-                        tx_data_in_r <= tx_data_in;
-                        tx_active <= '1';
-                        tx_state <= START;
-                    else
-                        tx_state <= IDLE;
-                    end if;
-                when START =>
-                    tx_data_out <= '0';
-                    if(sys_clk_count = clk_ticks_per_bit) then
-                        tx_state <= TX;
+            if(reset = '1') then
+                tx_state <= IDLE;
+                tx_active <= '0';
+                tx_done <= '0';
+                tx_data_out <= '1';
+                
+                sys_clk_count := 0;
+                bit_index := 0;
+            else
+                case tx_state is
+                    when IDLE =>
+                        tx_active <= '0';
+                        tx_done <= '0';
+                        tx_data_out <= '1';
+                        
                         sys_clk_count := 0;
-                    else
-                        tx_state <= START;
-                        sys_clk_count := sys_clk_count + 1;
-                    end if;
-                when TX =>
-                    tx_data_out <= tx_data_in_r(bit_index);
-                    if(sys_clk_count = clk_ticks_per_bit) then
-                        sys_clk_count := 0;
-                        if(bit_index = 7) then
-                            bit_index := 0;
-                            tx_state <= STOP;
+                        bit_index := 0;
+                        
+                        if(tx_start = '1') then
+                            tx_data_in_r <= tx_data_in;
+                            tx_active <= '1';
+                            tx_state <= START;
                         else
-                            bit_index := bit_index + 1;
+                            tx_state <= IDLE;
+                        end if;
+                    when START =>
+                        tx_data_out <= '0';
+                        if(sys_clk_count = clk_ticks_per_bit) then
+                            tx_state <= TX;
+                            sys_clk_count := 0;
+                        else
+                            tx_state <= START;
+                            sys_clk_count := sys_clk_count + 1;
+                        end if;
+                    when TX =>
+                        tx_data_out <= tx_data_in_r(bit_index);
+                        if(sys_clk_count = clk_ticks_per_bit) then
+                            sys_clk_count := 0;
+                            if(bit_index = 7) then
+                                bit_index := 0;
+                                tx_state <= STOP;
+                            else
+                                bit_index := bit_index + 1;
+                                tx_state <= TX;
+                            end if;
+                        else
+                            sys_clk_count := sys_clk_count + 1;
                             tx_state <= TX;
                         end if;
-                    else
-                        sys_clk_count := sys_clk_count + 1;
-                        tx_state <= TX;
-                    end if;
-                when STOP =>
-                    tx_data_out <= '1';
-                    tx_active <= '0';
-                    tx_done <= '1';
-                    
-                    if(sys_clk_count = clk_ticks_per_bit) then
-                        sys_clk_count := 0;
+                    when STOP =>
+                        tx_data_out <= '1';
+                        tx_active <= '0';
+                        tx_done <= '1';
+                        
+                        if(sys_clk_count = clk_ticks_per_bit) then
+                            sys_clk_count := 0;
+                            tx_state <= IDLE;
+                        else
+                            sys_clk_count := sys_clk_count + 1;
+                            tx_state <= STOP;
+                        end if;
+                    when others =>
                         tx_state <= IDLE;
-                    else
-                        sys_clk_count := sys_clk_count + 1;
-                        tx_state <= STOP;
-                    end if;
-                when others =>
-                    tx_state <= IDLE;
-            end case;
+                end case;
+            end if;
         end if;
     end process tx_FSM;
 end UART_tx_arch;
