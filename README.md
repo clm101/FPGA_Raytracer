@@ -11,10 +11,10 @@ The goal of this project is to implement a hardware accelerated ray-triangle int
    - The initial implementation was easier than expected, the remainder of this step will be experimenting with reading and writing to BRAM using the available IO on the Basys3 and creating testbenches.
 4. Verify writing and reading from the BRAM(DONE).
 ## Phase 2 (Initial FPGA UART work)
-1. Get FPGA to output data over a USB connection(In progress...).
-2. Verify using puTTY.
+1. Get FPGA to output data over a USB connection(DONE).
+2. Verify using puTTY(DONE).
 ## Phase 3 (FPGA->Windows work)
-- Create a Windows application that can read data being transmitted by FPGA over USB.
+- Create a Windows application that can read data being transmitted by FPGA over USB(In progress...).
 ## Phase 4 (Windows->FPGA work)
 1. Implement data transfer from Windows to FPGA.
 2. Create FPGA circuit that receives data, manipulates it, and returns it.
