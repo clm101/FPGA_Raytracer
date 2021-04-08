@@ -35,7 +35,7 @@ architecture UART_echo_arch of UART_echo is
     Signal reset : STD_LOGIC := '0';
     Signal rx_active : STD_LOGIC;
     Signal tx_start_r : STD_LOGIC := '0';
-    Signal rx_data_out_r : STD_LOGIC_VECTOR(7 downto 0) := X"FF";
+    Signal rx_data_out_r : STD_LOGIC_VECTOR(7 downto 0);
     Signal tx_active : STD_LOGIC;
     Signal tx_done : STD_LOGIC;
 begin
@@ -53,5 +53,4 @@ begin
             tx_active => tx_active,
             tx_done => tx_done,
             tx_data_out => tx);
-            
 end UART_echo_arch;

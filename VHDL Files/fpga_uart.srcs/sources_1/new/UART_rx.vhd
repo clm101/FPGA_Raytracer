@@ -25,8 +25,8 @@ end UART_rx;
 architecture UART_rx_arch of UART_rx is
     type rx_states_t is (IDLE, START, RX, STOP);
     signal rx_state : rx_states_t := IDLE;
-    constant clk_ticks_per_bit : integer := (100_000_000 / baud_rate) - 1;
-    constant clk_ticks_per_bit_x16 : integer := clk_ticks_per_bit / 16;
+    constant baud_freq_max_count : integer := (100_000_000 / baud_rate) - 1;
+    constant baud_freq_x16_max_count : integer := baud_freq_max_count / 16;
     
     signal rx_in_buf : STD_LOGIC := '0';
     signal rx_in_read : STD_LOGIC := '0';
@@ -44,7 +44,7 @@ begin
     
     rx_FSM: process(sys_clk)
         variable bit_index : integer range 0 to 7 := 0;
-        variable sys_clk_count : integer range 0 to clk_ticks_per_bit_x16 := 0;
+        variable sys_clk_count : integer range 0 to baud_freq_max_count := 0;
     begin
         if(rising_edge(sys_clk)) then
             if(reset = '1') then
@@ -60,7 +60,7 @@ begin
                     when IDLE =>
                         rx_active <= '0';
                         rx_done <= '0';
-                        if(sys_clk_count = clk_ticks_per_bit_x16) then
+                        if(sys_clk_count = baud_freq_x16_max_count) then
                             sys_clk_count := 0;
                             if(rx_in_read = '0') then
                                 rx_state <= START;
@@ -72,7 +72,7 @@ begin
                             rx_state <= IDLE;
                         end if;
                     when START =>
-                        if(sys_clk_count = (clk_ticks_per_bit - 1) / 2) then -- Sample middle of the bit
+                        if(sys_clk_count = (baud_freq_max_count - 1) / 2) then -- Sample middle of the bit
                             sys_clk_count := 0;
                             
                             if(rx_in_read = '0') then
@@ -86,7 +86,7 @@ begin
                             rx_state <= START;
                         end if;
                     when RX =>
-                        if(sys_clk_count = clk_ticks_per_bit) then
+                        if(sys_clk_count = baud_freq_max_count) then
                             sys_clk_count := 0;
                             rx_data_out_reg(bit_index) <= rx_in_read;
                             
@@ -103,11 +103,11 @@ begin
                             rx_state <= RX;
                         end if;
                     when STOP =>
-                        if(sys_clk_count = clk_ticks_per_bit) then
+                        if(sys_clk_count = baud_freq_max_count) then
                             sys_clk_count := 0;
                             rx_done <= '1';
                             rx_state <= IDLE;
-                        elsif(sys_clk_count > 1) then -- delay a couple clocks when rx_done goes high
+                        elsif(sys_clk_count > 1) then -- delay when rx_done goes high a couple of clks
                             sys_clk_count := sys_clk_count + 1;
                             rx_done <= '1';
                             rx_state <= STOP;
