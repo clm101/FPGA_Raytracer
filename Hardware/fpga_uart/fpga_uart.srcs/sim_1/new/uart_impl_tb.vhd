@@ -23,6 +23,7 @@ architecture Behavioral of uart_impl_tb is
         --generic(baud_rate : integer);
         port(clk : in STD_LOGIC;
             Rx : in STD_LOGIC;
+            reset : in STD_LOGIC;
             Tx : out STD_LOGIC);
     end component;
     
@@ -48,12 +49,15 @@ architecture Behavioral of uart_impl_tb is
     
     Signal tb_data_out : STD_LOGIC_VECTOR(7 downto 0) := X"00";
     Signal baud_clk : STD_LOGIC := '0';
+    
+    Signal reset : STD_LOGIC := '0';
 begin
     uut : UART_echo 
         --generic map(baud_rate)
         port map(
             clk => clk,
             Rx => rx,
+            reset => reset,
             Tx => tx);
             
     clk <= not clk after (clk_period / 2);

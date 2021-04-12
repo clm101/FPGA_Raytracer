@@ -1,0 +1,15 @@
+.vs/*
+Debug/*
+*.sln
+*.vcxproj
+*.vcxproj.*
+fpga_uart/fpga_uart.cache/*
+fpga_uart/fpga_uart.hw/*
+fpga_uart/fpga_uart.ip_user_files/*
+fpga_uart/fpga_uart.runs/*
+fpga_uart/fpga_uart.sim/*
+*.xpr
+*.png
+*.jou
+*.log
+x64/*
