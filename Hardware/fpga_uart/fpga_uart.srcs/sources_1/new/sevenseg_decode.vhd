@@ -20,19 +20,20 @@ architecture sevenseg_decode_arch of sevenseg_decode is
 
 begin
     data_out <= b"00000011" when data_in = X"0" else
-                b"01100000" when data_in = X"1" else
-                b"11011010" when data_in = X"2" else
-                b"01100110" when data_in = X"3" else
-                b"10110110" when data_in = X"4" else
-                b"10111110" when data_in = X"5" else
-                b"11100000" when data_in = X"6" else
-                b"11111110" when data_in = X"7" else
-                b"11110110" when data_in = X"8" else
-                b"11101110" when data_in = X"9" else
-                b"00111110" when data_in = X"A" else
-                b"10011100" when data_in = X"B" else
-                b"01111010" when data_in = X"C" else
-                b"10011110" when data_in = X"D" else
-                b"10001110" when data_in = X"E" else
+                b"10011111" when data_in = X"1" else
+                b"00100101" when data_in = X"2" else
+                b"00001101" when data_in = X"3" else
+                b"10011001" when data_in = X"4" else
+                b"01001001" when data_in = X"5" else
+                b"01000001" when data_in = X"6" else
+                b"00011111" when data_in = X"7" else
+                b"00000001" when data_in = X"8" else
+                b"00001001" when data_in = X"9" else
+                b"00010001" when data_in = X"A" else
+                b"11000001" when data_in = X"B" else
+                b"01100011" when data_in = X"C" else
+                b"10000101" when data_in = X"D" else
+                b"01100001" when data_in = X"E" else
+                b"01110001" when data_in = X"F" else
                 b"00000000";
 end sevenseg_decode_arch;
