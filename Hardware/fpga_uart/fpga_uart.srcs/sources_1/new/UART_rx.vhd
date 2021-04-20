@@ -12,14 +12,15 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity UART_rx is
     generic(
-        baud_rate : integer := 9600);
+        baud_rate : integer := 9600;
+        byte_size : integer := 1);
     port(
         sys_clk : in STD_LOGIC;
         reset : in STD_LOGIC;
         rx_in : in STD_LOGIC;
         rx_active : out STD_LOGIC;
         rx_done : out STD_LOGIC;
-        rx_data_out : out STD_LOGIC_VECTOR(7 downto 0));
+        rx_data_out : out STD_LOGIC_VECTOR(8 * byte_size - 1 downto 0));
 end UART_rx;
 
 architecture UART_rx_arch of UART_rx is
@@ -27,11 +28,12 @@ architecture UART_rx_arch of UART_rx is
     signal rx_state : rx_states_t := IDLE;
     constant baud_freq_max_count : integer := (100_000_000 / baud_rate) - 1;
     constant baud_freq_x16_max_count : integer := baud_freq_max_count / 16;
+    constant msg_length : integer := 8 * byte_size;
     
     signal rx_in_buf : STD_LOGIC := '0';
     signal rx_in_read : STD_LOGIC := '0';
     
-    signal rx_data_out_reg : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
+    signal rx_data_out_reg : STD_LOGIC_VECTOR(msg_length - 1 downto 0) := (others => '0');
 begin
     -- Buffer the input
     p_rx_buffer: process(sys_clk)
@@ -43,7 +45,7 @@ begin
     end process p_rx_buffer;
     
     rx_FSM: process(sys_clk)
-        variable bit_index : integer range 0 to 7 := 0;
+        variable bit_index : integer range 0 to msg_length - 1 := 0;
         variable sys_clk_count : integer range 0 to baud_freq_max_count := 0;
     begin
         if(rising_edge(sys_clk)) then
@@ -90,7 +92,7 @@ begin
                             sys_clk_count := 0;
                             rx_data_out_reg(bit_index) <= rx_in_read;
                             
-                            if(bit_index = 7) then
+                            if(bit_index = msg_length - 1) then
                                 bit_index := 0;
                                 rx_active <= '0';
                                 rx_state <= STOP;

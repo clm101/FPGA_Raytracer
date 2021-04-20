@@ -12,29 +12,31 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity UART_tx is
     generic(
-        baud_rate : integer := 9600);
+        baud_rate : integer := 9600;
+        byte_size : integer := 1);
     port(
         sys_clk : in STD_LOGIC;
         reset : in STD_LOGIC;
         tx_start : in STD_LOGIC;
-        tx_data_in : in STD_LOGIC_VECTOR(7 downto 0);
+        tx_data_in : in STD_LOGIC_VECTOR(8 * byte_size - 1 downto 0);
         tx_active : out STD_LOGIC;
         tx_done : out STD_LOGIC;
         tx_data_out : out STD_LOGIC);
 end UART_tx;
 
 architecture UART_tx_arch of UART_tx is
+    constant msg_length : integer := 8 * byte_size;
     type tx_states_t is (IDLE, START, TX, STOP);
     signal tx_state : tx_states_t := IDLE;
 
     signal tx_clk : STD_LOGIC := '0';
     
-    signal tx_data_in_r : STD_LOGIC_VECTOR(7 downto 0) := (others=>'0');
+    signal tx_data_in_r : STD_LOGIC_VECTOR(msg_length - 1 downto 0) := (others=>'0');
 begin
     tx_FSM: process(sys_clk)
         constant clk_ticks_per_bit : integer := ((100_000_000 / baud_rate) - 1);
         variable sys_clk_count : integer range 0 to clk_ticks_per_bit := 0;
-        variable bit_index : integer range 0 to 7 := 0;
+        variable bit_index : integer range 0 to 8 * byte_size - 1 := 0;
     begin
         if(rising_edge(sys_clk)) then
             if(reset = '1') then
@@ -75,7 +77,7 @@ begin
                         tx_data_out <= tx_data_in_r(bit_index);
                         if(sys_clk_count = clk_ticks_per_bit) then
                             sys_clk_count := 0;
-                            if(bit_index = 7) then
+                            if(bit_index = msg_length - 1) then
                                 bit_index := 0;
                                 tx_state <= STOP;
                             else
@@ -88,8 +90,8 @@ begin
                         end if;
                     when STOP =>
                         tx_data_out <= '1';
-                        tx_active <= '0';
-                        tx_done <= '1';
+                        tx_active <= '1';
+                        tx_done <= '0';
                         
                         if(sys_clk_count = clk_ticks_per_bit) then
                             sys_clk_count := 0;

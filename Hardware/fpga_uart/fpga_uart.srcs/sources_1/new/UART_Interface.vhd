@@ -11,15 +11,16 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 entity UART_Interface is
-    generic(baud_rate : integer := 9600);
+    generic(baud_rate : integer := 9600;
+            byte_size : integer := 1);
     port(clk : in STD_LOGIC;
         reset : in STD_LOGIC;
         rx_in : in STD_LOGIC;
         rx_active : out STD_LOGIC;
         rx_done : out STD_LOGIC;
-        rx_data_out : out STD_LOGIC_VECTOR(7 downto 0);
+        rx_data_out : out STD_LOGIC_VECTOR(8 * byte_size - 1 downto 0);
         tx_start : in STD_LOGIC;
-        tx_data_in : in STD_LOGIC_VECTOR(7 downto 0);
+        tx_data_in : in STD_LOGIC_VECTOR(8 * byte_size - 1 downto 0);
         tx_active : out STD_LOGIC;
         tx_done : out STD_LOGIC;
         tx_data_out : out STD_LOGIC);
@@ -28,31 +29,33 @@ end UART_Interface;
 architecture UART_Interface_arch of UART_Interface is
     component UART_rx
         generic(
-            baud_rate : integer);
+            baud_rate : integer;
+            byte_size : integer);
         port(
             sys_clk : in STD_LOGIC;
             reset : in STD_LOGIC;
             rx_in : in STD_LOGIC;
             rx_active : out STD_LOGIC;
             rx_done : out STD_LOGIC;
-            rx_data_out : out STD_LOGIC_VECTOR(7 downto 0));
+            rx_data_out : out STD_LOGIC_VECTOR(8 * byte_size - 1 downto 0));
     end component;
     
     component UART_tx
         generic(
-            baud_rate : integer);
+            baud_rate : integer;
+            byte_size : integer);
         port(
             sys_clk : in STD_LOGIC;
             reset : in STD_LOGIC;
             tx_start : in STD_LOGIC;
-            tx_data_in : in STD_LOGIC_VECTOR(7 downto 0);
+            tx_data_in : in STD_LOGIC_VECTOR(8 * byte_size - 1 downto 0);
             tx_active : out STD_LOGIC;
             tx_done : out STD_LOGIC;
             tx_data_out : out STD_LOGIC);
     end component;
 begin
     rx_mod : UART_rx
-        generic map(baud_rate)
+        generic map(baud_rate, byte_size)
         port map(
             sys_clk => clk,
             reset => reset,
@@ -61,7 +64,7 @@ begin
             rx_done => rx_done,
             rx_data_out => rx_data_out);
     tx_mod : UART_tx
-        generic map(baud_rate)
+        generic map(baud_rate, byte_size)
         port map(
             sys_clk => clk,
             reset => reset,
