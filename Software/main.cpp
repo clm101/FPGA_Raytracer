@@ -1,8 +1,17 @@
+#define NOMINMAX
 #include <Windows.h>
 #include <iostream>
 #include <exception>
 #include <sstream>
+#include <optional>
+#include <bit>
+#include <array>
+#include <limits>
 
+#define TEST_ECHO 0
+#define TEST_CTRL 1
+
+constexpr size_t nByteCount = 35558;
 namespace clm {
 	class FPGAException : public std::exception {
 	public:
@@ -32,7 +41,8 @@ namespace clm {
 	};
 
 	enum class BaudRate {
-		BR_9600
+		BR_9600,
+		BR_19200
 	};
 
 	class FPGA {
@@ -74,67 +84,186 @@ namespace clm {
 			case BaudRate::BR_9600:
 				dcb.BaudRate = CBR_9600;
 				break;
+			case BaudRate::BR_19200:
+				dcb.BaudRate = CBR_19200;
+				break;
 			default:
 				dcb.BaudRate = CBR_9600;
 				break;
 			}
 
 			if (SetCommState(m_hFPGA, &dcb) == 0) {
-				throw FPGAException{ "Error setting default DCB information" };
+				throw FPGAException{ "Error setting DCB information" };
 			}
+
+			COMMPROP comProp{};
+			if (GetCommProperties(m_hFPGA, &comProp) == 0) {
+				throw FPGAException{ "Error getting Comm properties" };
+			}
+			std::cout << "Size of Tx queue: " << comProp.dwMaxTxQueue << " bytes\n";
+			std::cout << "Size of Rx queue: " << comProp.dwMaxRxQueue << " bytes\n";
+			std::cout << "Max baud rate: " << std::hex << comProp.dwMaxBaud << '\n';
+			std::cout << "Comm-provider type: " << std::hex << comProp.dwProvSubType << '\n';
 		}
 		~FPGA() {
 			if (m_hFPGA != NULL) {
 				CloseHandle(m_hFPGA);
 			}
 		}
-		// Potentially template in the future
-		void buffer_insert(const char c) {
+		template<typename T>
+		void buffer_insert(T t) {
+			std::array<std::byte, sizeof(T)> txBufferPrep = std::bit_cast<std::array<std::byte, sizeof(T)>>(t);
 			DWORD dwBytesSent = 0;
-			if (WriteFile(m_hFPGA, &c, 1, &dwBytesSent, NULL) == 0) {
+			if (WriteFile(m_hFPGA, txBufferPrep.data(), sizeof(T), &dwBytesSent, NULL) == 0) {
 				throw FPGAException{ "Error writing buffer" };
 			}
 		}
 		bool buffer_check() {
 			return true;
 		}
-		void buffer_read() {
-			LPVOID ptrBuffer = nullptr;
+		std::optional<std::byte> buffer_read() {
+			std::byte buffer;
+			//static size_t cnt = 0;
 			DWORD dwBytesRead = 0;
-			if (ReadFile(m_hFPGA, &ptrBuffer, 1, &dwBytesRead, NULL) == 0) {
+			if (ReadFile(m_hFPGA, &buffer, 1, &dwBytesRead, NULL) == 0) {
 				throw FPGAException{ "Error reading buffer" };
 			}
-			else {
-				std::cout << "Reading->";
-				if (dwBytesRead != 0) {
-					for (DWORD i = 0; i < dwBytesRead; i++) {
-						std::cout << "Byte read: " << *reinterpret_cast<char*>(&ptrBuffer) << '\n';
-					}
-				}
-			}
-			return;
+			return dwBytesRead == 0 ? std::optional<std::byte>{} : buffer;
+		}
+
+		void send_ctrl1() {
+			buffer_insert(CtrlBytes::Ctrl1);
+		}
+		void send_ctrl2() {
+			buffer_insert(CtrlBytes::Ctrl2);
+		}
+		void send_ctrl3() {
+			buffer_insert(CtrlBytes::Ctrl3);
+		}
+		void send_uint(std::uint32_t n) {
+			buffer_insert(CtrlBytes::ECHO);
+			buffer_insert(n);
 		}
 	private:
 		HANDLE m_hFPGA;
+		enum class CtrlBytes : char {
+			Ctrl1 = 0x01,
+			Ctrl2 = 0x02,
+			Ctrl3 = 0x03,
+			ECHO = 0x04
+		};
 	};
 }
 
 int main() {
+#if TEST_ECHO
+	std::array<char, nByteCount> txBuffer{};
+	std::array<char, nByteCount> rxBuffer{};
+#endif
+	size_t nBytesTx = 0;
+	size_t nBytesRx = 0;
 
 	try {
-		clm::FPGA fpga{};
-		while (true) {
-			fpga.buffer_insert('a');
-			fpga.buffer_read();
+		clm::FPGA fpga{clm::BaudRate::BR_19200};
+#if TEST_ECHO
+		for (size_t i = 0; i < nByteCount; i++) {
+			txBuffer[i] = static_cast<char>(i % 256);
+			rxBuffer[i] = '\0';
 		}
+
+		constexpr size_t nMaxJobSize = 10000;
+		constexpr size_t nGroupCount = nByteCount / nMaxJobSize;
+		bool bExitLoop = false;
+		std::cout << std::dec;
+		for (size_t i = 0; i <= nGroupCount; i++) {
+			size_t nIterCount = std::min(nMaxJobSize, nByteCount - nMaxJobSize * i);
+			std::cout << "Sending...";
+			for (nBytesTx = 0; nBytesTx < nIterCount; nBytesTx++) {
+				fpga.buffer_insert(txBuffer[nBytesTx + i * nMaxJobSize]);
+			}
+			std::cout << nBytesTx << " bytes\nReceiving...";
+			for (nBytesRx = 0; nBytesRx < nIterCount; nBytesRx++) {
+				if (std::optional<char> oc = fpga.buffer_read()) {
+					rxBuffer[nBytesRx + i * nMaxJobSize] = oc.value();
+				}
+				else {
+					std::cout << "No byte received\n";
+					bExitLoop = true;
+					break;
+				}
+			}
+			std::cout << nBytesRx << " bytes\n";
+			if (bExitLoop) break;
+		}
+#endif
+#if TEST_CTRL
+		std::array<std::byte, 2> rx{};
+		std::array<std::byte, 4> rx_int{};
+		std::array<std::byte, 4> rx_int2{};
+		std::array<std::byte, 4> rx_int3{};
+		fpga.send_ctrl1();
+		if (std::optional<std::byte> ret = fpga.buffer_read()) {
+			rx[0] = ret.value();
+		}
+		fpga.send_ctrl2();
+		if (std::optional<std::byte> ret = fpga.buffer_read()) {
+			rx[1] = ret.value();
+		}
+		fpga.send_uint(345);
+		for (size_t i = 0; i < 4; i++) {
+			if (auto ret = fpga.buffer_read()) {
+				rx_int[i] = ret.value();
+			}
+			else {
+				std::cout << "Error reading back int";
+			}
+		}
+		fpga.send_uint(23453);
+		for (size_t i = 0; i < 4; i++) {
+			if (auto ret = fpga.buffer_read()) {
+				rx_int2[i] = ret.value();
+			}
+			else {
+				std::cout << "Error reading back int";
+			}
+		}
+		fpga.send_uint(std::numeric_limits<std::uint32_t>::max());
+		for (size_t i = 0; i < 4; i++) {
+			if (auto ret = fpga.buffer_read()) {
+				rx_int3[i] = ret.value();
+			}
+			else {
+				std::cout << "Error reading back int";
+			}
+		}
+
+		int x = 2; // breakpoint
+#endif
 	}
 	catch (const clm::FPGAException& e) {
 		std::cout << e.what();
+		return -1;
 	}
 	catch (...) {
 		std::cout << "Unknown exception caught\n";
+		return -2;
 	}
-	
-
+#if TEST_ECHO
+	std::cout << "Verifying...\n";
+	bool bCorrect = true;
+	for (size_t i = 0; i < nByteCount; i++) {
+		if (txBuffer[i] != rxBuffer[i]) {
+			std::cout << "Incorrect byte received. Byte " << i + 1 << " : " << rxBuffer[i] << " and " << txBuffer[i] << '\n';
+			bCorrect = false;
+			break;
+		}
+	}
+	if (!bCorrect) {
+		std::cout << "Test failed\n";
+	}
+	else {
+		std::cout << "Test passed\n";
+	}
+#endif
 	return 0;
 }
