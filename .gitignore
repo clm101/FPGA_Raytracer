@@ -13,3 +13,4 @@ Hardware/fpga_uart/fpga_uart.sim/*
 *.jou
 *.log
 x64/*
+*.fxm~
