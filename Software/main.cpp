@@ -8,8 +8,8 @@
 #include <array>
 #include <limits>
 
-#define TEST_ECHO 0
-#define TEST_CTRL 1
+#define TEST_ECHO 1
+#define TEST_CTRL 0
 
 constexpr size_t nByteCount = 35558;
 namespace clm {
@@ -157,8 +157,8 @@ namespace clm {
 
 int main() {
 #if TEST_ECHO
-	std::array<char, nByteCount> txBuffer{};
-	std::array<char, nByteCount> rxBuffer{};
+	std::array<std::byte, nByteCount> txBuffer{};
+	std::array<std::byte, nByteCount> rxBuffer{};
 #endif
 	size_t nBytesTx = 0;
 	size_t nBytesRx = 0;
@@ -167,8 +167,8 @@ int main() {
 		clm::FPGA fpga{clm::BaudRate::BR_19200};
 #if TEST_ECHO
 		for (size_t i = 0; i < nByteCount; i++) {
-			txBuffer[i] = static_cast<char>(i % 256);
-			rxBuffer[i] = '\0';
+			txBuffer[i] = static_cast<std::byte>(i % 256);
+			rxBuffer[i] = std::byte{ '\0' };
 		}
 
 		constexpr size_t nMaxJobSize = 10000;
@@ -183,7 +183,7 @@ int main() {
 			}
 			std::cout << nBytesTx << " bytes\nReceiving...";
 			for (nBytesRx = 0; nBytesRx < nIterCount; nBytesRx++) {
-				if (std::optional<char> oc = fpga.buffer_read()) {
+				if (std::optional<std::byte> oc = fpga.buffer_read()) {
 					rxBuffer[nBytesRx + i * nMaxJobSize] = oc.value();
 				}
 				else {
@@ -253,17 +253,12 @@ int main() {
 	bool bCorrect = true;
 	for (size_t i = 0; i < nByteCount; i++) {
 		if (txBuffer[i] != rxBuffer[i]) {
-			std::cout << "Incorrect byte received. Byte " << i + 1 << " : " << rxBuffer[i] << " and " << txBuffer[i] << '\n';
+			std::cout << "Incorrect byte received. Byte " << i + 1 << " : " << static_cast<char>(rxBuffer[i]) << " and " << static_cast<char>(txBuffer[i]) << '\n';
 			bCorrect = false;
 			break;
 		}
 	}
-	if (!bCorrect) {
-		std::cout << "Test failed\n";
-	}
-	else {
-		std::cout << "Test passed\n";
-	}
+	std::cout << (bCorrect ? "Test passed\n" : "Test failed\n");
 #endif
 	return 0;
 }
