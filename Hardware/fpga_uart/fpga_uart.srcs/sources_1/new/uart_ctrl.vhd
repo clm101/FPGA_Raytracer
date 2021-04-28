@@ -43,7 +43,29 @@ architecture uart_ctrl_arch of uart_ctrl is
             an : out STD_LOGIC_VECTOR(3 downto 0));
     end component;
     
-    type oper_state_t is (IDLE, CTRL1, CTRL2, ECHO);
+    component rx_dword
+        port(clk, rx_done, run : in STD_LOGIC;
+            rxData : in STD_LOGIC_VECTOR(7 downto 0);
+            done : out STD_LOGIC;
+            data : out STD_LOGIC_VECTOR(31 downto 0));
+    end component;
+    
+    component carry_lookahead_adder
+        generic(width : natural);
+        port(clk, run : in STD_LOGIC;
+            num1, num2 : in STD_LOGIC_VECTOR(width - 1 downto 0);
+            ready : out STD_LOGIC;
+            result : out STD_LOGIC_VECTOR(width downto 0));
+    end component;
+    
+    component multiplier
+        port(clk, run : STD_LOGIC;
+            int1, int2 : in STD_LOGIC_VECTOR(31 downto 0);
+            prod : out STD_LOGIC_VECTOR(31 downto 0);
+            ready : out STD_LOGIC);
+    end component;
+    
+    type oper_state_t is (IDLE, CTRL1, CTRL2, ECHO, ADD, MUL);
     Signal oper_state : oper_state_t := IDLE;
     Signal oper_state_next : oper_state_t := IDLE;
     
@@ -64,8 +86,47 @@ architecture uart_ctrl_arch of uart_ctrl is
     Signal tx_done_r_prev : STD_LOGIC := '0';
     
     Signal echo_int : STD_LOGIC_VECTOR(31 downto 0) := (others => '0');
+    Signal echo_int_r : STD_LOGIC_VECTOR(31 downto 0) := (others => '0');
     type echo_state_t is (RECV, TRAN);
-    Signal echo_state : echo_state_t := RECV; 
+    Signal echo_state : echo_state_t := RECV;
+    
+    type add_state_t is (RECV1, RECV2, ADD, TRAN);
+    Signal add_state : add_state_t := RECV1;
+    Signal int1 : STD_LOGIC_VECTOR(31 downto 0) := (others => '0');
+    Signal int2 : STD_LOGIC_VECTOR(31 downto 0) := (others => '0');
+    Signal int_sum_r : STD_LOGIC_VECTOR(32 downto 0) := (others => '0');
+    Signal int_sum : STD_LOGIC_VECTOR(31 downto 0) := (others => '0');
+    Signal adder_run : STD_LOGIC := '0';
+    Signal adder_ready : STD_LOGIC;
+    
+    procedure get_dw(
+        variable i : inout integer;
+        variable j : inout integer;
+        Signal rx_done : in STD_LOGIC;
+        Signal rx_done_prev : in STD_LOGIC;
+        Signal rx_data : in STD_LOGIC_VECTOR(7 downto 0);
+        Signal echo_data : inout STD_LOGIC_VECTOR(31 downto 0);
+        Signal echo_state : inout echo_state_t) is
+    begin
+        if(rx_done = '1' and rx_done_prev = '0') then
+            echo_data(8 * i + 7 downto 8 * i) <= rx_data;
+            i := i + 1;
+            if(i = 4) then
+                echo_state <= TRAN;
+                i := 0;
+                j := 0;
+            end if;
+        end if;
+    end procedure get_dw;
+    
+    Signal run_rx_dword_sig : STD_LOGIC := '0';
+    Signal done_rx_dword_sig : STD_LOGIC;
+    
+    type mul_state_t is (RECV1, RECV2, MUL, TRAN);
+    Signal mul_state : mul_state_t := RECV1;
+    Signal mul_run : STD_LOGIC := '0';
+    Signal mul_ready : STD_LOGIC;
+    Signal mul_prod, mul_prod_r : STD_LOGIC_VECTOR(31 downto 0) := (others => '0');
 begin
     uart : UART_Interface
         generic map(baud_rate)
@@ -89,6 +150,33 @@ begin
             data_out => sevseg_data,
             an => an
         );
+    rx_dword_mod : rx_dword
+        port map(
+            clk => clk,
+            rx_done => rx_done,
+            rxData => rx_data_out,
+            run => run_rx_dword_sig,
+            done => done_rx_dword_sig,
+            data => echo_int_r
+        );
+    adder : carry_lookahead_adder
+        generic map(32)
+        port map(
+            clk => clk,
+            run => adder_run,
+            num1 => int1,
+            num2 => int2,
+            result => int_sum_r,
+            ready => adder_ready
+        );
+    multiplier_mod : multiplier
+        port map(
+            clk => clk,
+            run => mul_run,
+            int1 => int1,
+            int2 => int2,
+            prod => mul_prod_r,
+            ready => mul_ready);
     
     process(clk) begin
         if(rising_edge(clk)) then
@@ -118,6 +206,10 @@ begin
                             oper_state_next <= CTRL2;
                         when X"04" =>
                             oper_state_next <= ECHO;
+                        when X"05" =>
+                            oper_state_next <= ADD;
+                        when X"06" =>
+                            oper_state_next <= MUL;
                         when others =>
                             oper_state_next <= IDLE;
                     end case;
@@ -168,15 +260,30 @@ begin
                     busy <= '1';
                     case echo_state is
                         when RECV =>
-                            if(rx_done_r = '1' and rx_done_r_prev = '0') then
-                                echo_int(8 * i + 7 downto 8 * i) <= rx_data_out;
-                                i := i + 1;
-                                if(i = 4) then
-                                    echo_state <= TRAN;
-                                    i := 0;
-                                    j := 0;
-                                end if;
+                        -- Initial impl
+--                            if(rx_done_r = '1' and rx_done_r_prev = '0') then
+--                                echo_int(8 * i + 7 downto 8 * i) <= rx_data_out;
+--                                i := i + 1;
+--                                if(i = 4) then
+--                                    echo_state <= TRAN;
+--                                    i := 0;
+--                                    j := 0;
+--                                end if;
+--                            end if;
+
+                        -- Procedure impl
+--                            get_dw(i, j, rx_done_r, rx_done_r_prev, rx_data_out, echo_int, echo_state);
+                        
+                        -- Module impl
+                            run_rx_dword_sig <= '1';
+                            if(done_rx_dword_sig = '1') then
+                                echo_int <= echo_int_r;
+                                run_rx_dword_sig <= '0';
+                                echo_state <= TRAN;
+                            else
+                                echo_state <= RECV;
                             end if;
+                                
                         when TRAN =>
                             if(tx_active = '0') then
                                 if(j = 0) then
@@ -198,37 +305,114 @@ begin
                                 j := 0;
                             end if;
                     end case;
---                    if(j = 0) then
---                        if(rx_done_r = '1' and rx_done_r_prev = '0') then
---                            echo_int(8 * i + 7 downto 8 * i) <= rx_data_out;
---                            i := i + 1;
---                            if(i = 4) then
---                                i := 0;
---                                j := 1;
---                            end if;
---                        end if;
---                    elsif(j = 1) then
---                        if(tx_active = '0') then
---                            if(k = 0) then
---                                tx_data_in <= echo_int(8 * i + 7 downto 8 * i);
---                                k := 1;
---                            elsif(k = 1) then
---                                tx_start <= '1';
---                                i := i + 1;
---                                k := 0;
---                            end if;
---                        else
---                            tx_start <= '0';
---                        end if;
-                        
---                        if(i = 4) then
---                            j := 2;
---                            i := 0;
---                        end if;
---                    else
---                        j := 0;
---                        oper_state <= IDLE;
---                    end if;
+                when ADD =>
+                    busy <= '1';
+                    case add_state is
+                        when RECV1 =>
+                            run_rx_dword_sig <= '1';
+                            if(done_rx_dword_sig = '1') then
+                                int1 <= echo_int_r;
+                                run_rx_dword_sig <= '0';
+                                add_state <= RECV2;
+                            else
+                                add_state <= RECV1;
+                            end if;
+                        when RECV2 =>
+                            if(run_rx_dword_sig = '1') then
+                                if(done_rx_dword_sig = '1') then
+                                    int2 <= echo_int_r;
+                                    run_rx_dword_sig <= '0';
+                                    add_state <= ADD;
+                                else
+                                    add_state <= RECV2;
+                                end if;
+                            else
+                                run_rx_dword_sig <= '1';
+                            end if;
+                        when ADD =>
+                            adder_run <= '1';
+                            if(adder_ready = '1') then
+                                adder_run <= '0';
+                                int_sum <= int_sum_r(31 downto 0);
+                                add_state <= TRAN;
+                            else
+                                add_state <= ADD;
+                            end if;
+                        when TRAN =>
+                            if(tx_active = '0') then
+                                if(j = 0) then
+                                    if(i = 4) then
+                                        i := 0;
+                                        j := 0;
+                                        add_state <= RECV1;
+                                        oper_state <= IDLE;
+                                    else
+                                        tx_data_in <= int_sum(8 * i + 7 downto 8 * i);
+                                        i := i + 1;
+                                        j := j + 1;
+                                    end if;
+                                elsif(j = 1) then
+                                    tx_start <= '1';
+                                end if;
+                            else
+                                tx_start <= '0';
+                                j := 0;
+                            end if;
+                    end case;
+                when MUL =>
+                    busy <= '1';
+                    case mul_state is
+                        when RECV1 =>
+                            run_rx_dword_sig <= '1';
+                            if(done_rx_dword_sig = '1') then
+                                int1 <= echo_int_r;
+                                run_rx_dword_sig <= '0';
+                                mul_state <= RECV2;
+                            else
+                                mul_state <= RECV1;
+                            end if;
+                        when RECV2 =>
+                            if(run_rx_dword_sig = '1') then
+                                if(done_rx_dword_sig = '1') then
+                                    int2 <= echo_int_r;
+                                    run_rx_dword_sig <= '0';
+                                    mul_state <= MUL;
+                                else
+                                    mul_state <= RECV2;
+                                end if;
+                            else
+                                run_rx_dword_sig <= '1';
+                            end if;
+                        when MUL =>
+                            mul_run <= '1';
+                            if(mul_ready = '1') then
+                                mul_run <= '0';
+                                mul_prod <= mul_prod_r;
+                                mul_state <= TRAN;
+                            else
+                                mul_state <= MUL;
+                            end if;
+                        when TRAN =>
+                            if(tx_active = '0') then
+                                if(j = 0) then
+                                    if(i = 4) then
+                                        i := 0;
+                                        j := 0;
+                                        mul_state <= RECV1;
+                                        oper_state <= IDLE;
+                                    else
+                                        tx_data_in <= mul_prod(8 * i + 7 downto 8 * i);
+                                        i := i + 1;
+                                        j := j + 1;
+                                    end if;
+                                elsif(j = 1) then
+                                    tx_start <= '1';
+                                end if;
+                            else
+                                tx_start <= '0';
+                                j := 0;
+                            end if;
+                    end case;
                 when others =>
                     busy <= '1';
                     if(i = 3) then
