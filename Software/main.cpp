@@ -8,8 +8,8 @@
 #include <array>
 #include <limits>
 
-#define TEST_ECHO 1
-#define TEST_CTRL 0
+#define TEST_ECHO 0
+#define TEST_CTRL 1
 
 constexpr size_t nByteCount = 35558;
 namespace clm {
@@ -144,18 +144,33 @@ namespace clm {
 			buffer_insert(CtrlBytes::ECHO);
 			buffer_insert(n);
 		}
+		void add_ints(std::int32_t n1, std::int32_t n2) {
+			buffer_insert(CtrlBytes::ADD);
+			buffer_insert(n1);
+			buffer_insert(n2);
+		}
+		void mul_ints(std::int32_t n1, std::int32_t n2) {
+			buffer_insert(CtrlBytes::MUL);
+			buffer_insert(n1);
+			buffer_insert(n2);
+		}
 	private:
 		HANDLE m_hFPGA;
 		enum class CtrlBytes : char {
 			Ctrl1 = 0x01,
 			Ctrl2 = 0x02,
 			Ctrl3 = 0x03,
-			ECHO = 0x04
+			ECHO = 0x04,
+			ADD = 0x05,
+			MUL = 0x06
 		};
 	};
 }
 
 int main() {
+	std::array<std::byte, 4> fp = std::bit_cast<std::array<std::byte, 4>>(3.0f);
+	std::array<std::byte, 4> fp2 = std::bit_cast<std::array<std::byte, 4>>(5.34f);
+	std::array<std::byte, 4> fp3 = std::bit_cast<std::array<std::byte, 4>>(3.0f + 5.34f);
 #if TEST_ECHO
 	std::array<std::byte, nByteCount> txBuffer{};
 	std::array<std::byte, nByteCount> rxBuffer{};
@@ -201,6 +216,8 @@ int main() {
 		std::array<std::byte, 4> rx_int{};
 		std::array<std::byte, 4> rx_int2{};
 		std::array<std::byte, 4> rx_int3{};
+		std::array<std::byte, 4> rx_int4{};
+		std::array<std::byte, 4> rx_int5{};
 		fpga.send_ctrl1();
 		if (std::optional<std::byte> ret = fpga.buffer_read()) {
 			rx[0] = ret.value();
@@ -236,6 +253,25 @@ int main() {
 				std::cout << "Error reading back int";
 			}
 		}
+		fpga.add_ints(-1258, 45);
+		for (size_t i = 0; i < 4; i++) {
+			if (auto ret = fpga.buffer_read()) {
+				rx_int4[i] = ret.value();
+			}
+			else {
+				std::cout << "Error reading back int";
+			}
+		}
+		fpga.mul_ints(23, 7);
+		for (size_t i = 0; i < 4; i++) {
+			if (auto ret = fpga.buffer_read()) {
+				rx_int5[i] = ret.value();
+			}
+			else {
+				std::cout << "Error reading back int";
+			}
+		}
+
 
 		int x = 2; // breakpoint
 #endif
