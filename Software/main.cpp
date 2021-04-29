@@ -262,7 +262,7 @@ int main() {
 				std::cout << "Error reading back int";
 			}
 		}
-		fpga.mul_ints(23, 7);
+		/*fpga.mul_ints(23, 7);
 		for (size_t i = 0; i < 4; i++) {
 			if (auto ret = fpga.buffer_read()) {
 				rx_int5[i] = ret.value();
@@ -270,7 +270,7 @@ int main() {
 			else {
 				std::cout << "Error reading back int";
 			}
-		}
+		}*/
 
 
 		int x = 2; // breakpoint
